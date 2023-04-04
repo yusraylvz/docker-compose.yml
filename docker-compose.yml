@@ -1,0 +1,59 @@
+version: "3"
+
+services:
+  wordpress:
+    image: wordpress:fpm-alpine
+    restart: always
+    depends_on:
+      - db
+  environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: exampleuser
+      WORDPRESS_DB_PASSWORD: examplepass
+      WORDPRESS_DB_NAME: exampledb
+    volumes:
+      - wordpress:/var/www/html
+    networks:
+      - frontend
+      - backend
+
+  db:
+    image: mariadb
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: 31017022
+    volumes:
+      - ./db:/var/lib/mysql
+    networks:
+      - backend
+
+  nginx:
+    image: nginx
+    restart: always
+    depends_on:
+      - wordpress
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+      - ./wordpress:/var/www/html
+      - ./letsencrypt:/etc/letsencrypt
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - frontend
+
+  certbot:
+    image: certbot/certbot
+    restart: always
+    volumes:
+      - ./letsencrypt:/etc/letsencrypt
+      - ./nginx:/etc/nginx/conf.d
+    depends_on:
+      - nginx
+    command: certonly --webroot --webroot-path=/var/www/html --email example_email@example.com --agree-tos --no-eff-email -d example_domain.com
+    networks:
+      - frontend
+
+networks:
+  frontend:
+  backend:
